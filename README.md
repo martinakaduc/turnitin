@@ -1,15 +1,17 @@
 # Who am I
+
 I am an IB student and a security analyst. I hunt for bugs in big companies on HackerOne. Here is my profile: https://hackerone.com/dimondev
 
 # Description
+
 This is a free version of Turnitin. Probably the best tool for IB students.
 Written in Python.
 
 It is pretty easy to set it up:
 
 ```
-pip install pyfiglet
-python turnitin.py
+pip install -r requirements.txt
+python turnitin.py [PDF/DOCX/TXT file]
 ```
 
 Then, the screen should look like this. Pretty straightforward, just input your text and the magic happens in the backend.
