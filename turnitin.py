@@ -26,15 +26,17 @@ burp0_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64; rv:100.
                  "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "X-Requested-With": "XMLHttpRequest", "Origin": "https://papersowl.com", "Dnt": "1", "Sec-Fetch-Dest": "empty", "Sec-Fetch-Mode": "no-cors", "Sec-Fetch-Site": "same-origin", "Pragma": "no-cache", "Cache-Control": "no-cache", "Te": "trailers", "Connection": "close"}
 
 # Split text_to_check into 19000 characters chunks
-text_to_check = [text_to_check[i:i+19000]
-                 for i in range(0, len(text_to_check), 19000)]
+text_to_check_splitted = [text_to_check[i:i+19000]
+                          for i in range(0, len(text_to_check), 19000)]
 
 output_file = open("output.txt", "w", encoding="utf-8")
 
 chunk_idx = 0
-for text in tqdm(text_to_check):
+turnitin_index = 0
+for text in tqdm(text_to_check_splitted):
     burp0_data = {"is_free": "false", "plagchecker_locale": "en",
                   "product_paper_type": "1", "title": '', "text": str(text)}
+    words = str(text).split()
 
     try:
         r = requests.post(burp0_url, headers=burp0_headers,
@@ -45,20 +47,42 @@ for text in tqdm(text_to_check):
         result = {'error_code': 1, 'message': 'Connection error'}
 
     if result['error_code'] > 0:
-        print(result['message'])
+        print(result)
     else:
         print("\n[!] Word count : " + str(result["words_count"]))
         print("\n[!] Turnitin index : " + str(100 - float(result["percent"])))
         print("\n[!] Matches : " + str(result["matches"]))
 
+        matched_idxs = [x["highlight"] for x in result["matches"]]
+        matched_words = []
+        for part in matched_idxs:
+            matched_part = []
+            for idxs in part:
+                matched_part.append(
+                    " ".join(words[int(idxs[0]):int(idxs[1])+1]))
+            matched_words.append(matched_part)
+
+        save_matches = []
+        for x in result["matches"]:
+            x.pop("highlight", None)
+            save_matches.append(x)
+
         output_file.write("[!] Chunk : " + str(chunk_idx))
         output_file.write("\n[!] Word count : " + str(result["words_count"]))
         output_file.write("\n[!] Turnitin index : " +
                           str(100 - float(result["percent"])))
-        output_file.write("\n[!] Matches : " + str(result["matches"]))
+        output_file.write("\n[!] Matches : " +
+                          json.dumps(save_matches, indent=4))
+        output_file.write("\n[!] Matched words :\n" +
+                          json.dumps(matched_words, ensure_ascii=False, indent=4))
         output_file.write("\n\n")
         output_file.flush()
 
+        turnitin_index += (100 - float(result["percent"])) * \
+            len(text) / len(text_to_check)
+
     chunk_idx += 1
 
+print("\n[!] Average turnitin index : " + str(turnitin_index))
+output_file.write("\n[!] Average turnitin index : " + str(turnitin_index))
 output_file.close()
